@@ -6,7 +6,7 @@ English | [简体中文](README_cn.md)
 
 # Force — A Forth-powered, programmable terminal editor
 
-[![CI](https://github.com/hsieh/fe/actions/workflows/ci.yml/badge.svg)](https://github.com/hsieh/fe/actions/workflows/ci.yml)
+[![CI](https://github.com/hsieh/force/actions/workflows/ci.yml/badge.svg)](https://github.com/hsieh/force/actions/workflows/ci.yml)
 
 `fe` (short for **Force Editor**) is a terminal text editor built in and programmable with **Forth (Gforth)**. The editor and the Forth interpreter run in the **same process and share the same dictionary** — so you can reach into the editor's internal words and variables, and define new commands live.
 

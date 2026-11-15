@@ -6,7 +6,7 @@
 
 # Force — 用 Forth 驱动、可现场编程的终端编辑器
 
-[![CI](https://github.com/hsieh/fe/actions/workflows/ci.yml/badge.svg)](https://github.com/hsieh/fe/actions/workflows/ci.yml)
+[![CI](https://github.com/hsieh/force/actions/workflows/ci.yml/badge.svg)](https://github.com/hsieh/force/actions/workflows/ci.yml)
 
 `fe`（**Force Editor** 的缩写）是一个跑在终端里、用 **Forth（Gforth）** 构建并可编程的编辑器。编辑器和 Forth 解释器在**同一进程、共享同一个词典**——你可以直接访问编辑器的内部词和变量，现场定义新命令。
 
