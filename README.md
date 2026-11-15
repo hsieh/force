@@ -1,14 +1,14 @@
 English | [简体中文](README_cn.md)
 
 <p align="center">
-  <img src="4.png" alt="fe — a Forth-powered, programmable terminal editor" width="500">
+  <img src="ForceEditor.png" alt="Force — a Forth-powered, programmable terminal editor" width="500">
 </p>
 
-# fe — A Forth-powered, programmable terminal editor
+# Force — A Forth-powered, programmable terminal editor
 
 [![CI](https://github.com/hsieh/fe/actions/workflows/ci.yml/badge.svg)](https://github.com/hsieh/fe/actions/workflows/ci.yml)
 
-`fe` is a terminal text editor built in and programmable with **Forth (Gforth)**. The editor and the Forth interpreter run in the **same process and share the same dictionary** — so you can reach into the editor's internal words and variables, and define new commands live.
+`fe` (short for **Force Editor**) is a terminal text editor built in and programmable with **Forth (Gforth)**. The editor and the Forth interpreter run in the **same process and share the same dictionary** — so you can reach into the editor's internal words and variables, and define new commands live.
 
 It pairs that with a familiar, complete editing experience: **vi-style modal editing**, fuzzy-matching pickers, async live grep, an LSP client, multi-window splits, and undo/redo.
 
