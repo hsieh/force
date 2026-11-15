@@ -1,7 +1,7 @@
 简体中文 | [English](README.md)
 
 <p align="center">
-  <img src="ForceEditor.png" alt="Force — 用 Forth 驱动、可现场编程的终端编辑器" width="500">
+  <img src="ForceEditor2.png" alt="Force — 用 Forth 驱动、可现场编程的终端编辑器" width="500">
 </p>
 
 # Force — 用 Forth 驱动、可现场编程的终端编辑器
