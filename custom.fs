@@ -3168,18 +3168,18 @@ $10000000 constant cm-shift
 \ set the current buffer's language (:syntax): auto=automatic (B:LANGOVR=0), name=forced language; turn highlighting off via cmd-syntax-toggle/buffer-toggle
 : cmd-syntax-set { a u -- }
   a u s" auto" compare 0= if 0 gctx @ B:LANGOVR + ! syntax-refresh s" syntax auto" msg! exit then
-  a u lang-name-of ?dup 0= if drop s" no such language" msg! exit then
+  a u lang-name-of ?dup 0= if s" no such language" msg! exit then
   gctx @ B:LANGOVR + !  syntax-refresh  s" syntax set" msg! ;
 \ set a buffer's syntax (for REPL use): buffer-name language|auto; no gctx switch, no execute, operates on the field address directly
 : cmd-syntax-set-named { bn bl ln ll -- }
-  bn bl buffer-find ?dup 0= if drop s" no such buffer" msg! exit then
+  bn bl buffer-find ?dup 0= if s" no such buffer" msg! exit then
   { b }
   ln ll s" auto" compare 0= if 0 b B:LANGOVR + ! syntax-refresh s" syntax auto" msg! exit then
-  ln ll lang-name-of ?dup 0= if drop s" no such language" msg! exit then
+  ln ll lang-name-of ?dup 0= if s" no such language" msg! exit then
   b B:LANGOVR + !  syntax-refresh  s" syntax set" msg! ;
 \ toggle the syntax switch by buffer name (no gctx switch, no execute, usable in `!`/REPL; operates on the buffer field address directly)
 : cmd-syntax-buffer-toggle-named { a u -- }
-  a u buffer-find ?dup 0= if drop s" no such buffer" msg! exit then
+  a u buffer-find ?dup 0= if s" no such buffer" msg! exit then
   { b }
   b B:SYNTAX + @ dup -1 = if drop syntax-on @ 0= 1 and else 0= 1 and then
   b B:SYNTAX + !

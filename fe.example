@@ -7,6 +7,64 @@
 0 linenr-default !            \ line numbers off by default (0=off 1=absolute 2=relative 3=hybrid)
 1 backup !                    \ keep the previous version as <name>~ on save
 
+\ ==== git branch in the status line ====
+\ shown as "<file> (branch)"; refreshes on buffer switch, file load and reload (M).
+\ The branch is cached — do not run git on every redraw (the status line redraws each frame).
+
+create gs-branch 64 allot
+variable gs-len  0 gs-len !
+variable gs-fid 0 gs-fid !
+variable gs-a   0 gs-a !
+variable gs-u   0 gs-u !
+
+: git-branch-refresh ( -- )   \ run git symbolic-ref --short HEAD; cache it (empty = no repo / detached HEAD)
+  0 gs-len !
+  s" git symbolic-ref --short HEAD 2>/dev/null" r/o open-pipe throw gs-fid !
+  gs-fid @ slurp-fid gs-u ! gs-a !
+  gs-fid @ close-pipe throw drop
+  gs-u @ 0> if
+    gs-a @ gs-u @ 1- + c@ 10 = if -1 gs-u +! then   \ strip the trailing newline
+    gs-u @ 64 min gs-len !
+    gs-a @ gs-branch gs-len @ move
+  then
+  gs-a @ ?dup if free throw then ;
+
+\ build "<name> (branch)" into a scratch buffer for the status line
+create gs-display 512 allot
+variable gs-dlen 0 gs-dlen !
+: gs-put ( a u -- )  { a u }  a gs-display gs-dlen @ + u move  u gs-dlen +! ;
+
+\ save the original fname-display and wrap it (fname-display is a defer hook used by the status line)
+variable fname-base-xt
+action-of fname-display fname-base-xt !
+: fname-display-git ( -- a u )
+  0 gs-dlen !
+  fname-base-xt @ execute gs-put
+  gs-len @ 0> if
+    s"  (" gs-put  gs-branch gs-len @ gs-put  s")" gs-put
+  then
+  gs-display gs-dlen @ ;
+' fname-display-git is fname-display
+
+\ refresh on buffer switch (covers switching to an already-open buffer)
+variable gs-enter-base-xt
+buffer-enter-xt @ gs-enter-base-xt !
+: buffer-enter-git ( -- )
+  gs-enter-base-xt @ execute
+  git-branch-refresh ;
+' buffer-enter-git buffer-enter-xt !
+
+\ refresh on file load / reload (M) — reload-file calls file-loaded-xt at the end
+variable gs-loaded-base-xt
+action-of file-loaded-xt gs-loaded-base-xt !
+: file-loaded-git ( -- )
+  gs-loaded-base-xt @ execute
+  git-branch-refresh ;
+' file-loaded-git is file-loaded-xt
+
+\ initial value: the first file was already opened before this config ran
+git-branch-refresh
+
 \ --- leader (Space) ---
 bl set-leader-key             \ Space becomes the leader; the bind-leader keys below use it
 
