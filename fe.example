@@ -1,11 +1,12 @@
 \ ===== fe.example — a sample ~/.fe config =====
-\ copy to ~/.fe (or ./.fe.fs for a project), then press Ctrl-x in fe to reload.
+\ copy to ~/.fe (or ./.fe.fs for a project), then press F5 in fe to reload.
 \ The config is interpreted Forth: use char / ' for keys and words (not [char] / [']).
 
 \ --- basics ---
 4 tab-width !                 \ tab display width
 0 linenr-default !            \ line numbers off by default (0=off 1=absolute 2=relative 3=hybrid)
 1 backup !                    \ keep the previous version as <name>~ on save
+K-F11 ' reload-extension bind-base   \ F11 also reloads custom.fs (F5 is the default)
 
 \ ==== git branch in the status line ====
 \ shown as "<file> (branch)"; refreshes on buffer switch, file load and reload (M).

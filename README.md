@@ -18,8 +18,8 @@ Four design choices set it apart:
 
 1. **Forth-native, not just Forth-themed.** The editor *is* a live Forth system. From the embedded REPL you can call the editor's internal words and variables directly, and `:` define new commands on the fly — not a C program with a Forth skin on top.
 2. **A familiar, complete daily driver.** vi-style modal editing, LSP, live grep, fuzzy file/buffer pickers, multiple windows, undo/redo, and keyboard macros. You don't give up ordinary editor capabilities to use Forth.
-3. **The editor itself is modifiable on the fly.** Configuration, command definitions, key bindings, and the extension mechanism are all Forth — they are the core of the project, not an implementation detail. Edit `~/.fe`, then press `Ctrl-x` to reload.
-4. **A small, deliberate core — everything is customizable.** `fe` intentionally does not ship an all-in-one feature set, because nothing is hard-wired: key bindings, commands, modes, the status line, and syntax highlighting are all redefinable live. Define new commands with `:`, rebind keys, drop them into `~/.fe` (or `./.fe.fs`), and press `Ctrl-x` to reload — no restart, no recompiling. Your extensions run in the same live Forth system as the editor itself.
+3. **The editor itself is modifiable on the fly.** Configuration, command definitions, key bindings, and the extension mechanism are all Forth — they are the core of the project, not an implementation detail. Edit `~/.fe`, then press `F5` to reload.
+4. **A small, deliberate core — everything is customizable.** `fe` intentionally does not ship an all-in-one feature set, because nothing is hard-wired: key bindings, commands, modes, the status line, and syntax highlighting are all redefinable live. Define new commands with `:`, rebind keys, drop them into `~/.fe` (or `./.fe.fs`), and press `F5` to reload — no restart, no recompiling. Your extensions run in the same live Forth system as the editor itself.
 
 ### Handmade style
 
@@ -112,7 +112,7 @@ ln -s "$PWD/fe" ~/bin/fe
 
 ## Configuration (layered: `~/.fe` + `./.fe.fs`)
 
-At startup (and on `Ctrl-x` reload), configuration layers are loaded by priority: **`~/.fe` (user) → `./.fe.fs` (project root; the latter can override)**. Each layer is a **Forth snippet** — it can set variables and rebind keys:
+At startup (and on `F5` reload), configuration layers are loaded by priority: **`~/.fe` (user) → `./.fe.fs` (project root; the latter can override)**. Each layer is a **Forth snippet** — it can set variables and rebind keys:
 
 ```forth
 4 tab-width !                          \ tab display width (default 8)
@@ -184,7 +184,7 @@ A configuration error in one layer is isolated (reported on the status line; it 
 | `Q` / `@` | start/stop recording a keyboard macro / replay the macro |
 | `Ctrl-s` | save |
 | `Ctrl-l` | redraw |
-| `Ctrl-x` | reload configuration (`~/.fe`/`./.fe.fs`/key bindings) |
+| `F5` | reload configuration (`~/.fe`/`./.fe.fs`/key bindings) |
 | `q` | quit (asks for confirmation if there are unsaved changes) |
 
 ### Prefix keys
@@ -209,7 +209,8 @@ An unmatched second key cancels the prefix mode.
 | `←` `→` `↑` `↓` / `Home` / `End` | movement |
 | `PgUp` / `PgDn` / `Ctrl-f` / `Ctrl-b` | page up / down |
 | `Ctrl-s` | save |
-| `Ctrl-x` | reload configuration |
+| `F5` | reload configuration |
+| `Ctrl-x` | toggle paste mode (insert literal text: no auto-indent / tab completion) |
 | `ESC` | return to command mode |
 
 ---

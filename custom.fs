@@ -82,7 +82,8 @@ create keymap-repl   /keymap cells allot
 create mode-qrep     /mode cells allot
 create keymap-qrep   /keymap cells allot
 : mst-op      s" OPERATOR PENDING" ;
-: mst-ins  s" INSERT" ;
+variable paste-mode  0 paste-mode !   \ vim :set paste — insert literal bytes (no auto-indent / tab completion) while pasting
+: mst-ins  paste-mode @ if s" INSERT (paste)" else s" INSERT" then ;
 : mst-search  s" SEARCH" ;
 : mst-prompt  s" PROMPT" ;
 : mst-qrep    s" REPLACE" ;
@@ -154,6 +155,7 @@ variable prompt-tab-xt  0 prompt-tab-xt !
   n ;
 
 : fe-insert-newline
+  paste-mode @ if 10 fe-insert exit then    \ paste: bare newline, no indent copy
   cursor @ offset->linecol drop { line }
   line line-start { ls }
   line line-indent-len { ilen }
@@ -3026,11 +3028,17 @@ $10000000 constant cm-shift
 \ Tab: word completion (inserts a tab with no word prefix; the display backend decides insert/popup)
 : cmd-word-complete
   bflags @ BF_READONLY and if exit then
+  paste-mode @ if 9 fe-insert exit then     \ paste: literal tab, no completion
   word-prefix wc-u !  wc-a !
   wc-u @ 0= if 9 fe-insert exit then
   wc-a @ wc-u @ complete-next-xt @ execute wc-cu !  wc-ca !
   wc-ca @ 0= if #bell emit exit then
   cpres-open-xt @ ?dup if execute then ;
+
+\ vim :set paste! / pastetoggle equivalent: toggle paste mode (no auto-indent / tab completion while pasting)
+: cmd-paste-toggle
+  paste-mode @ 0= paste-mode !
+  paste-mode @ if s" paste on" else s" paste off" then msg! ;
 
 \ --- commands ---
 : cmd-visual                 \ v: toggle charwise visual; in linewise visual switch to charwise (keep anchor)
@@ -4013,7 +4021,7 @@ variable em-off 0 em-off !
   K-DELETE ['] fe-delete     bind-base
   key-ctrl-s ['] save-current bind-base
   key-ctrl-l ['] redraw-full   bind-base
-  key-ctrl-x ['] reload-extension bind-base
+  K-F5       ['] reload-extension bind-base   \ F5 reload extension (Ctrl-x freed for future use)
   key-ctrl-c ['] cmd-panic        bind-base
   key-ctrl-o ['] buffer-open-name  bind-base   \ Ctrl-o open by name
   key-ctrl-n ['] cmd-toggle-linenr  bind-base   \ Ctrl-n cycle the line-number mode
@@ -4155,7 +4163,8 @@ variable em-off 0 em-off !
   #esc     ['] cmd-esc-ins      bind-insert   \ ESC back to command mode
   #bs      ['] fe-backspace     bind-insert   \ Backspace
   #del     ['] fe-backspace     bind-insert   \ DEL
-  #cr      ['] fe-insert-newline bind-insert ; \ Enter
+  #cr      ['] fe-insert-newline bind-insert   \ Enter
+  key-ctrl-x ['] cmd-paste-toggle bind-insert ; \ Ctrl-x toggle paste mode (vim :set paste)
 
 : bind-search-mode ( -- ) \ search mode (modal, no parent; unmatched keys append to pat)
   keymap-search mode-search m-keymap !
