@@ -4,7 +4,7 @@
 
 \ set a plain pattern
 : ss-pat ( a u -- )
-  0 patlen !  0 regex-search !  0 word-boundary !  0 ignorecase !
+  0 patlen !  0 patpos !  0 regex-search !  0 word-boundary !  0 ignorecase !
   { a u }
   u 0 ?do  a i + c@ pat-add  loop ;
 

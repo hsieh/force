@@ -4,6 +4,7 @@
 256 constant /pat
 create pat /pat allot
 variable patlen     0 patlen !
+variable patpos     0 patpos !   \ edit cursor (byte offset into pat)
 variable search-dir 1 search-dir !   \ 1=forward -1=backward
 variable searching  0 searching !    \ whether a search string is being typed
 variable ignorecase 0 ignorecase !   \ 1=ignore case
@@ -33,8 +34,17 @@ variable word-boundary 0 word-boundary !   \ 1=naive matching requires word boun
   snap @ snap-len @ pos re-match-at
   dup -2 = if drop 0 then ;
 
-: pat-clear 0 patlen !  0 word-boundary !  regex-recompile ;
-: pat-add { c }  patlen @ /pat < if  c pat patlen @ + c!  1 patlen +!  then  regex-recompile ;
+: pat-clear 0 patlen !  0 patpos !  0 word-boundary !  regex-recompile ;
+: pat-add { c }               \ insert one byte at patpos (no recompile; caller runs sp-rebuild)
+  patlen @ /pat 1- < if
+    patlen @ { i }
+    begin i patpos @ > while
+      pat i 1- + c@  pat i + c!     \ shift tail right by one
+      i 1- to i
+    repeat
+    c pat patpos @ + c!
+    1 patlen +!  1 patpos +!
+  else #bell emit then ;
 \ does pattern match at pos -> match end offset, or 0 if none
 : match-at? { pos }
   regex-search @ re-valid @ and if

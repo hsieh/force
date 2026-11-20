@@ -441,12 +441,14 @@ variable reload-armed  0 reload-armed !   \ the modified buffer awaiting reload 
 
 \ ===== search =====
 : pat-add-cp { cp }  cp ['] pat-add utf8-emit ;
-: pat-back                        \ delete the last character (multibyte as a whole)
-  patlen @ 0> if
-    patlen @ 1- { i }
-    begin i 0> pat i + c@ 0x80 0xC0 within and while  i 1- to i  repeat
-    i patlen !
-    regex-recompile
+: pat-back                        \ delete the grapheme before patpos (no-op at start)
+  patpos @ 0> if
+    patpos @ { p }
+    -1 patpos +!
+    begin patpos @ 0>  pat patpos @ + c@ 0x80 0xC0 within  and while  -1 patpos +!  repeat
+    patpos @ { q }                          \ q = grapheme start
+    pat p +  pat q +  patlen @ p -  move    \ shift tail left
+    patlen @ p q - - patlen !
   then ;
 
 : search-do { dir -- }
@@ -462,15 +464,16 @@ variable reload-armed  0 reload-armed !   \ the modified buffer awaiting reload 
   re-timeout @ if s" regex timeout" msg! then ;
 
 \ search-mode commands/defaults (installed into mode-search)
-: search-input { c -- }        \ append a printable character + incremental re-search from the start point
-  c 32 >= if
-    c pat-add-cp
-    search-start @ cursor !
-    search-dir @ search-do
-  then ;
+: sp-rebuild ( -- )        \ recompile + re-search from the start point (content changed)
+  regex-recompile
+  search-start @ cursor !
+  search-dir @ search-do ;
+: sp-backspace  pat-back  sp-rebuild ;
+: sp-clear      0 patlen !  0 patpos !  0 word-boundary !  sp-rebuild ;
+: search-input { c -- }        \ insert at cursor + incremental re-search from the start point
+  c 32 >= if c pat-add-cp  sp-rebuild  then ;
 : cmd-search-cancel  search-start @ cursor !  mode-pop ;   \ ESC/Ctrl-C: back to the start point
 : cmd-search-accept  mode-pop ;                            \ Enter: stay at the match
-: cmd-search-bs      pat-back  search-start @ cursor !  search-dir @ search-do ;
 
 \ enter search (command mode)
 : cmd-search-fwd  pat-clear   1 search-dir !  cursor @ search-start !  mode-search mode-push ;
@@ -496,7 +499,7 @@ create cw-buf 64 allot
 : cmd-star ( -- )
   cursor-word { a u }
   u 0= if #bell emit exit then
-  a pat u move  u patlen !
+  a pat u move  u patlen !  u patpos !
   1 word-boundary !   regex-recompile ;
 
 \ g* same as *, but without word boundary (literal substring)
@@ -504,7 +507,7 @@ create cw-buf 64 allot
   mode-pop
   cursor-word { a u }
   u 0= if #bell emit exit then
-  a pat u move  u patlen !
+  a pat u move  u patlen !  u patpos !
   0 word-boundary !   regex-recompile ;
 
 \ delete [lo,hi) (one undo step: record and capture the deleted data via core's urec-del-fwd)
@@ -613,7 +616,7 @@ variable qmsg-udn 0 qmsg-udn !
 
 : qrep-accept-pat
   pbuf pbuflen @ /pat min { m }
-  pbuf pat m move  m patlen !
+  pbuf pat m move  m patlen !  m patpos !
   patlen @ 0= if s" empty pattern" msg! exit then
   s" with: " ['] qrep-accept-rpl prompt-open ;
 
@@ -1690,7 +1693,7 @@ variable lp-kill-len 0 lp-kill-len !
   pbpos @ 0> if
     pbuf  lp-kill-buf  pbpos @  move
     pbpos @ lp-kill-len !
-    pbuf  pbuf pbpos @ +  pbuflen @ pbpos @ -  move
+    pbuf pbpos @ +  pbuf  pbuflen @ pbpos @ -  move
     pbuflen @ pbpos @ - pbuflen !
     0 pbpos !
     0 pnrows !
@@ -1704,7 +1707,7 @@ variable lp-kill-len 0 lp-kill-len !
   pbpos @ lp-kw-q @ > if
     pbuf lp-kw-q @ +  lp-kill-buf  pbpos @ lp-kw-q @ -  move
     pbpos @ lp-kw-q @ - lp-kill-len !
-    pbuf lp-kw-q @ +  pbuf pbpos @ +  pbuflen @ pbpos @ -  move
+    pbuf pbpos @ +  pbuf lp-kw-q @ +  pbuflen @ pbpos @ -  move
     pbuflen @ pbpos @ lp-kw-q @ - - pbuflen !
     lp-kw-q @ pbpos !
     0 pnrows !
@@ -1712,7 +1715,7 @@ variable lp-kill-len 0 lp-kill-len !
 
 : pb-yank
   lp-kill-len @ 0>  pbuflen @ lp-kill-len @ + /pbuf 1- <  and if
-    pbuf pbpos @ lp-kill-len @ + +  pbuf pbpos @ +  pbuflen @ pbpos @ -  move
+    pbuf pbpos @ +  pbuf pbpos @ lp-kill-len @ + +  pbuflen @ pbpos @ -  move
     lp-kill-buf  pbuf pbpos @ +  lp-kill-len @  move
     lp-kill-len @ pbuflen +!
     lp-kill-len @ pbpos +!
@@ -1730,6 +1733,69 @@ variable lp-kill-len 0 lp-kill-len !
 : pb-clear  0 pbuflen !  0 pbpos !  0 pnrows ! ;
 
 : lp-backspace  lp-left  pb-del-at  lp-refresh ;
+
+\ ===== search readline editing (sp-*: operate on pat/patlen/patpos; content edits call sp-rebuild) =====
+: sp-home  0 patpos ! ;
+: sp-end   patlen @ patpos ! ;
+: sp-left  patpos @ 0> if
+    -1 patpos +!
+    begin patpos @ 0>  pat patpos @ + c@ 0x80 0xC0 within  and while  -1 patpos +!  repeat
+  then ;
+: sp-right  patpos @ patlen @ < if
+    pat patpos @ + c@ dup 0x80 < if drop 1 else dup 0xE0 < if drop 2 else dup 0xF0 < if drop 3 else drop 4 then then then
+    patpos +!
+  then ;
+: sp-del-at
+  patpos @ patlen @ < if
+    pat patpos @ + c@  dup 0x80 < if drop 1 else dup 0xE0 < if drop 2 else dup 0xF0 < if drop 3 else drop 4 then then then  lp-kw-q !
+    patpos @ lp-kw-p !
+    begin lp-kw-p @ patlen @ lp-kw-q @ - < while
+      lp-kw-p @ lp-kw-q @ + pat + c@  lp-kw-p @ pat + c!
+      1 lp-kw-p +!
+    repeat
+    patlen @ lp-kw-q @ - patlen !
+  then ;
+: sp-delete  sp-del-at  sp-rebuild ;
+: sp-kill-end
+  patlen @ patpos @ > if
+    pat patpos @ +  lp-kill-buf  patlen @ patpos @ -  move
+    patlen @ patpos @ - lp-kill-len !
+    patpos @ patlen !
+    sp-rebuild
+  then ;
+: sp-kill-start
+  patpos @ 0> if
+    pat  lp-kill-buf  patpos @  move
+    patpos @ lp-kill-len !
+    pat patpos @ +  pat  patlen @ patpos @ -  move      \ shift tail left (src=pat+patpos, dst=pat)
+    patlen @ patpos @ - patlen !
+    0 patpos !
+    sp-rebuild
+  then ;
+: sp-kill-word
+  patpos @ lp-kw-p !
+  begin lp-kw-p @ 0>  pat lp-kw-p @ 1- + c@ 32 =  and while  -1 lp-kw-p +!  repeat
+  begin lp-kw-p @ 0>  pat lp-kw-p @ 1- + c@ 32 <>  and while  -1 lp-kw-p +!  repeat
+  lp-kw-p @ lp-kw-q !
+  patpos @ lp-kw-q @ > if
+    pat lp-kw-q @ +  lp-kill-buf  patpos @ lp-kw-q @ -  move
+    patpos @ lp-kw-q @ - lp-kill-len !
+    pat patpos @ +  pat lp-kw-q @ +  patlen @ patpos @ -  move   \ shift tail left (src=pat+patpos, dst=pat+q)
+    patlen @ patpos @ lp-kw-q @ - - patlen !
+    lp-kw-q @ patpos !
+    sp-rebuild
+  then ;
+: sp-yank
+  lp-kill-len @ { n }
+  n 0> if
+    n  /pat 1- patlen @ -  min  to n
+    n 0> if
+      pat patpos @ +  pat patpos @ n + +  patlen @ patpos @ -  move   \ shift tail right by n (src=pat+patpos, dst=pat+patpos+n)
+      lp-kill-buf  pat patpos @ +  n move
+      n patlen +!   n patpos +!
+      sp-rebuild
+    else #bell emit then
+  then ;
 : lp-up    lp-sel @ 0> if -1 lp-sel +!  lp-update  then ;
 : lp-down  lp-sel @ lp-nmatches @ 1- < if 1 lp-sel +!  lp-update  then ;
 : lp-accept
@@ -2211,7 +2277,7 @@ variable fm-cn 0 fm-cn !
 \ ===== cursor positioning during search/prompt (installed into core's cursor-place-xt hook)=====
 : cursor-place ( -- flag )
   searching @ if
-    2  pat patlen @ x-width +   scr-rows @   at-xy  true exit
+    2  pat patpos @ x-width +   scr-rows @   at-xy  true exit
   then
   prompting @ if
     1 prompt-prefix-len @ +  pbuf pbpos @ x-width +   scr-rows @   at-xy  true exit
@@ -4177,8 +4243,18 @@ variable em-off 0 em-off !
   #esc       ['] cmd-search-cancel mode-search bind-mode
   key-ctrl-c ['] cmd-search-cancel mode-search bind-mode
   #cr        ['] cmd-search-accept mode-search bind-mode
-  #bs        ['] cmd-search-bs     mode-search bind-mode
-  #del       ['] cmd-search-bs     mode-search bind-mode ;
+  #bs        ['] sp-backspace      mode-search bind-mode
+  #del       ['] sp-backspace      mode-search bind-mode
+  key-ctrl-a ['] sp-home           mode-search bind-mode
+  key-ctrl-e ['] sp-end            mode-search bind-mode
+  key-ctrl-b ['] sp-left           mode-search bind-mode
+  key-ctrl-f ['] sp-right          mode-search bind-mode
+  key-ctrl-d ['] sp-delete         mode-search bind-mode
+  key-ctrl-k ['] sp-kill-end       mode-search bind-mode
+  key-ctrl-u ['] sp-kill-start     mode-search bind-mode
+  key-ctrl-w ['] sp-kill-word      mode-search bind-mode
+  key-ctrl-y ['] sp-yank           mode-search bind-mode
+  key-ctrl-l ['] sp-clear          mode-search bind-mode ;
 
 : bind-prompt-mode ( -- ) \ prompt mode (modal, no parent; unmatched keys append to pbuf)
   keymap-prompt mode-prompt m-keymap !
