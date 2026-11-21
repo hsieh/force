@@ -975,6 +975,9 @@ variable sfb-sep
 
 \ output this segment from in-line byte bi / absolute column dcol0, return (new bi, new absolute column); tabs expand to spaces
 variable rs-c 0 rs-c !
+\ current-line highlight: curline-attr (theme bg) is applied to the current text row's background (text area only)
+variable curline-attr  0 curline-attr !
+variable row-bg-attr   0 row-bg-attr !    \ bg of the row currently being rendered (set per row)
 : render-seg { loff lw bi dcol0 }
   bi { b }  dcol0 { dcol }  0 { hlend }  0 { hlattr }  0 { curattr }
   begin
@@ -985,6 +988,7 @@ variable rs-c 0 rs-c !
       a hl-xt @ execute  to hlattr to hlend
     then
     a hlend < if  hlattr  else  0  then { eff }   \ effective style (0 outside the region)
+    eff bg? 0= if  eff row-bg-attr @ or to eff  then   \ merge current-line background under FG-only styles
     eff curattr <> if  eff style>fb  eff to curattr  then
     \ in-text label (avy goto-char/goto-word): replace the candidate char with its label — active window only
     em-label-xt @ win-render-active @ and ?dup if  a swap execute  else  0 0 0 0 0  then { lba lln lcw lcn lca }
@@ -995,7 +999,7 @@ variable rs-c 0 rs-c !
     else
     loff b + dcol u8-wl { cw cn }
     dcol dcol0 - 0>  dcol dcol0 - cw + text-cols @ >  and if
-      curattr if 0 style>fb then  b dcol exit
+      curattr if row-bg-attr @ style>fb then  b dcol exit
     then
     loff b + g-char-at rs-c !
     rs-c @ 9 =  rs-c @ 13 =  or if
@@ -1007,7 +1011,7 @@ variable rs-c 0 rs-c !
     b cn + to b
     then
   repeat
-  curattr if 0 style>fb then
+  curattr if row-bg-attr @ style>fb then
   b dcol ;
 
 \ cursor hide/show (hides the cursor "passing over" the status line during updates)
@@ -1055,6 +1059,9 @@ variable cur-shape  -1 cur-shape !
       \ line-number gutter + text (always rendered, so the buffer state advances)
       tl ts gutter-xt @ execute
       dcol0 { seg0 }                    \ segment start (absolute column); after rendering, dcol0 = segment-end absolute column
+      \ current-line background (text area only; the gutter renders its own colors)
+      tl cursor @ offset-line = if curline-attr @ else 0 then row-bg-attr !
+      row-bg-attr @ if row-bg-attr @ style>fb then
       loff lw bi dcol0 render-seg to dcol0 to bi
       \ overlay-covered rows: do not clear the row after the text; the menu overlays it + clear the tail; ordinary rows clear at the row end
       win-render-active @
@@ -1859,6 +1866,7 @@ variable fe-no-config 0 fe-no-config !
   shutdown-xt @ ?dup if execute then
   mouse-off
   0 cursor-shape
+  27 emit 91 emit 48 emit 109 emit   \ \e[0m: reset any leaked SGR colors/attributes
   sane-mode
   cursor-show
   page ." bye" cr ;

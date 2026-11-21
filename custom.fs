@@ -3647,6 +3647,7 @@ create theme-default
   <A k-blue >BGrgb k-green >FGrgb Bold A> ,
   <A k-cyan >FGrgb Underline A> ,
   Invers , Invers Dim or ,
+  0 ,
 
 \ monokai palette (24-bit)
 $6a9955 constant mk-comment
@@ -3656,6 +3657,7 @@ $f92672 constant mk-pink
 $a6e22e constant mk-green
 $66d9ef constant mk-cyan
 $fd971f constant mk-orange
+$3e3d32 constant mk-linehl   \ lineHighlight
 
 create theme-monokai
   <A mk-comment >FGrgb A> , <A mk-yellow >FGrgb A> , <A mk-purple >FGrgb A> , <A mk-pink >FGrgb Bold A> ,
@@ -3665,9 +3667,10 @@ create theme-monokai
   <A mk-cyan >BGrgb mk-green >FGrgb Bold A> ,
   <A mk-cyan >FGrgb Underline A> ,
   Invers , Invers Dim or ,
+  <A mk-linehl >BGrgb A> ,
 
 \ handmade-hero palette (Casey Muratori's Handmade Hero theme)
-$7d7d7d constant hh-comment    \ gray
+$7f7f7f constant hh-comment    \ gray50 (Casey's .emacs comment)
 $6b8e23 constant hh-olive      \ olive drab (strings/constants)
 $cd950c constant hh-goldenrod  \ keyword
 $dab98f constant hh-tan        \ preproc/builtin
@@ -3685,6 +3688,7 @@ create theme-handmadehero
   <A hh-selbg >BGrgb hh-cursor >FGrgb Bold A> ,
   <A hh-burlywood >FGrgb Underline A> ,
   Invers , Invers Dim or ,
+  <A $191970 >BGrgb A> ,
 
 : theme-apply ( a -- )
   8 0 ?do  dup i cells + @  sidx-attrs i 1+ cells + !  loop
@@ -3699,6 +3703,7 @@ create theme-handmadehero
   dup 16 cells + @ sym-attr !
   dup 17 cells + @ status-attr !
   dup 18 cells + @ status-inactive-attr !
+  dup 19 cells + @ curline-attr !
   drop ;
 
 variable theme-cur 0 theme-cur !   \ 0=default 1=monokai 2=handmadehero (-1=custom)
