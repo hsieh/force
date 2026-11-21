@@ -1059,8 +1059,8 @@ variable cur-shape  -1 cur-shape !
       \ line-number gutter + text (always rendered, so the buffer state advances)
       tl ts gutter-xt @ execute
       dcol0 { seg0 }                    \ segment start (absolute column); after rendering, dcol0 = segment-end absolute column
-      \ current-line background (text area only; the gutter renders its own colors)
-      tl cursor @ offset-line = if curline-attr @ else 0 then row-bg-attr !
+      \ current-line background (active window only; text area only; the gutter renders its own colors)
+      win-render-active @  tl cursor @ offset-line =  and  if curline-attr @ else 0 then row-bg-attr !
       row-bg-attr @ if row-bg-attr @ style>fb then
       loff lw bi dcol0 render-seg to dcol0 to bi
       \ overlay-covered rows: do not clear the row after the text; the menu overlays it + clear the tail; ordinary rows clear at the row end
