@@ -636,11 +636,33 @@ variable cursor-place-xt       \ ( -- flag )     true = the cursor has already b
 variable buffer-enter-xt       \ ( -- )  called after buffer-switch changes buffers (0 = none)
 variable key-pre-xt           \ ( c -- ) called before each key dispatch (for observation/recording; 0 = none)
 variable last-key  0 last-key !   \ the key currently being dispatched (custom's generic prefix enter uses it to look up key→mode)
-variable panel-attr  <A Blue >BG White >FG Bold A> panel-attr !   \ selected row (fzf cursor row)
-variable match-attr  <A Green >FG A> match-attr !               \ matched-character highlight (fzf hl: green)
-variable match-sel-attr  <A Blue >BG Green >FG Bold A> match-sel-attr !  \ matched characters on the selected row (fzf hl+: bold green on blue)
-variable bracket-attr  <A Magenta >BG Dim A> bracket-attr !       \ bracket match: paired brackets (magenta background + dim)
-variable sym-attr  <A Cyan >FG Underline A> sym-attr !           \ symbol highlight in refs picker content (cyan underline, distinct from the green match)
+\ ===== color support: attr = attributes(bits 0-7) + FG flag(b8)/BG flag(b9) + FG RGB(b10-33) + BG RGB(b34-57) =====
+\ RGB packed as $RRGGBB; flag bit set = color present (black $000000 is a valid color, so a flag is required)
+$000000 constant c-black    $800000 constant c-red
+$008000 constant c-green    $808000 constant c-yellow
+$000080 constant c-blue     $800080 constant c-magenta
+$008080 constant c-cyan     $c0c0c0 constant c-white
+$808080 constant c-brblack  $ff0000 constant c-brred
+$00ff00 constant c-brgreen  $ffff00 constant c-bryellow
+$0000ff constant c-brblue   $ff00ff constant c-brmagenta
+$00ffff constant c-brcyan   $ffffff constant c-brwhite
+
+: >BGrgb ( rgb -- x )   34 lshift  512 or ;      \ bit 9 = BG present
+: >FGrgb ( rgb -- x )   10 lshift  256 or ;      \ bit 8 = FG present
+: rgb>bg ( attr -- rgb )   34 rshift $FFFFFF and ;
+: rgb>fg ( attr -- rgb )   10 rshift $FFFFFF and ;
+: bg? ( attr -- f )   9 rshift 1 and ;
+: fg? ( attr -- f )   8 rshift 1 and ;
+
+variable color-depth  4 color-depth !   \ terminal color depth (bits): 24 truecolor / 8 256-colors / 4 16-colors / 3 8-colors
+create q16-tab 256 allot                \ 256-color index -> 16-color index (0-15)
+create q8-tab  256 allot                \ 256-color index -> 8-color index (0-7)
+
+variable panel-attr  <A c-blue >BGrgb c-white >FGrgb Bold A> panel-attr !   \ selected row (fzf cursor row)
+variable match-attr  <A c-green >FGrgb A> match-attr !               \ matched-character highlight (fzf hl: green)
+variable match-sel-attr  <A c-blue >BGrgb c-green >FGrgb Bold A> match-sel-attr !  \ matched characters on the selected row (fzf hl+: bold green on blue)
+variable bracket-attr  <A c-magenta >BGrgb Dim A> bracket-attr !       \ bracket match: paired brackets (magenta background + dim)
+variable sym-attr  <A c-cyan >FGrgb Underline A> sym-attr !           \ symbol highlight in refs picker content (cyan underline, distinct from the green match)
 variable status-attr  Invers status-attr !                        \ active window statusline bar (bright reverse)
 variable status-inactive-attr  Invers Dim or status-inactive-attr !   \ inactive window statusline bar (reverse + dim; SGR2 ignored by rxvt/old VTE — override via theme)
 variable shutdown-xt  0 shutdown-xt !   \ ( -- ) pre-exit hook (lsp uses it to shut down the server); 0 = none
@@ -749,18 +771,128 @@ variable pfirst 0 pfirst !
 
 \ output this segment from in-line byte offset bi (not exceeding text-cols display columns; wide characters do not straddle segments), return the new bi
 \ ===== style table (syntax highlighting): reusing ansi.fs color/attribute encoding =====
-<A Cyan >FG A>              Constant S-COMMENT
-<A Green >FG A>             Constant S-STRING
-<A Magenta >FG A>           Constant S-NUMBER
-<A Blue >FG Bold A>         Constant S-KEYWORD
-<A Cyan >FG Bold A>         Constant S-CONST
-<A Yellow >FG A>            Constant S-BUILTIN
-<A Cyan >FG A>               Constant S-TYPE
-<A Magenta >FG Bold A>       Constant S-PREPROC
+<A c-cyan >FGrgb A>              Constant S-COMMENT
+<A c-green >FGrgb A>             Constant S-STRING
+<A c-magenta >FGrgb A>           Constant S-NUMBER
+<A c-blue >FGrgb Bold A>         Constant S-KEYWORD
+<A c-cyan >FGrgb Bold A>         Constant S-CONST
+<A c-yellow >FGrgb A>            Constant S-BUILTIN
+<A c-cyan >FGrgb A>               Constant S-TYPE
+<A c-magenta >FGrgb Bold A>       Constant S-PREPROC
 Dim                         Constant S-LINENR     \ line number (dim)
-<A Yellow >FG A>            Constant S-CURLINENR  \ current line number (bright)
+<A $e5c07b >FGrgb A>             Constant S-CURLINENR  \ current line number (bright)
 Invers                      Constant S-SELECT   \ selection
 Invers                      Constant S-SEARCH   \ search match (reverse video)
+
+\ ===== 256 -> 16 -> 8 quantization + color emission helpers =====
+: q8-one ( n -- idx )      \ 256-color index -> 8-color index (0-7)
+  dup 8 < if exit then
+  dup 16 < if 8 - exit then
+  dup 232 < if
+    16 - { v }  v 36 / { r }  v 36 mod 6 / { g }  v 6 mod { b }
+    r 3 >= if 1 else 0 then { rb }  g 3 >= if 1 else 0 then { gb }  b 3 >= if 1 else 0 then { bb }
+    rb gb 2* + bb 4 * +
+  else
+    232 - 12 >= if 7 else 0 then
+  then ;
+
+: q16-one ( n -- idx )     \ 256-color index -> 16-color index (0-15)
+  dup 16 < if exit then
+  dup 232 < if
+    16 - { v }  v 36 / { r }  v 36 mod 6 / { g }  v 6 mod { b }
+    r 3 >= if 1 else 0 then { rb }  g 3 >= if 1 else 0 then { gb }  b 3 >= if 1 else 0 then { bb }
+    rb gb 2* + bb 4 * + { base }
+    r 4 >= g 4 >= or b 4 >= or if base 8 + else base then
+  else
+    232 - { g }
+    g 18 >= if 15 else g 12 >= if 7 else g 6 >= if 8 else 0 then then then
+  then ;
+
+: color-tables-init ( -- )
+  256 0 ?do  i q8-one  q8-tab i + c!   i q16-one  q16-tab i + c!  loop ;
+
+\ RGB -> xterm-256 index (exact ANSI 16 -> 0..15, else cube + grayscale)
+: rgb>256 { rgb -- idx }
+  rgb c-black     = if  0 exit then
+  rgb c-red       = if  1 exit then
+  rgb c-green     = if  2 exit then
+  rgb c-yellow    = if  3 exit then
+  rgb c-blue      = if  4 exit then
+  rgb c-magenta   = if  5 exit then
+  rgb c-cyan      = if  6 exit then
+  rgb c-white     = if  7 exit then
+  rgb c-brblack   = if  8 exit then
+  rgb c-brred     = if  9 exit then
+  rgb c-brgreen   = if 10 exit then
+  rgb c-bryellow  = if 11 exit then
+  rgb c-brblue    = if 12 exit then
+  rgb c-brmagenta = if 13 exit then
+  rgb c-brcyan    = if 14 exit then
+  rgb c-brwhite   = if 15 exit then
+  rgb 16 rshift $FF and { r }
+  rgb  8 rshift $FF and { g }
+  rgb $FF and { b }
+  r g = g b = and if
+    r 8 < if 16 else
+      r 247 > if 231 else
+        232  r 8 - 10 / +
+      then
+    then
+  else
+    r 5 * 255 / { r5 }  g 5 * 255 / { g5 }  b 5 * 255 / { b5 }
+    16 36 r5 * + 6 g5 * + b5 +
+  then ;
+
+: fb-fg ( rgb -- )        \ emit FG (leading ';'); rgb = $RRGGBB
+  59 fb-c
+  color-depth @ 24 = if
+    51 fb-c 56 fb-c 59 fb-c 50 fb-c 59 fb-c   \ 38;2;
+    dup 16 rshift $FF and  fb-ud.              \ R
+    59 fb-c
+    dup 8 rshift $FF and  fb-ud.               \ ;G
+    59 fb-c
+    $FF and  fb-ud.                            \ ;B
+  else color-depth @ 8 = if
+    51 fb-c 56 fb-c 59 fb-c 53 fb-c 59 fb-c   \ 38;5;
+    rgb>256 fb-ud.
+  else color-depth @ 4 = if
+    rgb>256 q16-tab + c@  dup 8 < if 30 + else 82 + then  fb-ud.
+  else
+    rgb>256 q8-tab + c@ 30 + fb-ud.
+  then then then ;
+
+: fb-bg ( rgb -- )        \ emit BG (leading ';')
+  59 fb-c
+  color-depth @ 24 = if
+    52 fb-c 56 fb-c 59 fb-c 50 fb-c 59 fb-c   \ 48;2;
+    dup 16 rshift $FF and  fb-ud.
+    59 fb-c
+    dup 8 rshift $FF and  fb-ud.
+    59 fb-c
+    $FF and  fb-ud.
+  else color-depth @ 8 = if
+    52 fb-c 56 fb-c 59 fb-c 53 fb-c 59 fb-c   \ 48;5;
+    rgb>256 fb-ud.
+  else color-depth @ 4 = if
+    rgb>256 q16-tab + c@  dup 8 < if 40 + else 92 + then  fb-ud.
+  else
+    rgb>256 q8-tab + c@ 40 + fb-ud.
+  then then then ;
+
+: detect-color-depth ( -- )
+  4 color-depth !
+  s" COLORTERM" getenv dup if
+    2dup s" truecolor" search nip nip if 2drop 24 color-depth ! exit then
+    2dup s" 24bit"     search nip nip if 2drop 24 color-depth ! exit then
+    2drop
+  else 2drop then
+  s" TERM" getenv dup if
+    2dup s" 256color" search nip nip if 2drop 8 color-depth ! exit then
+    2dup s" linux"    search nip nip if 2drop 3 color-depth ! exit then
+    2dup s" vt100"    search nip nip if 2drop 3 color-depth ! exit then
+    2dup s" dumb"     search nip nip if 2drop 3 color-depth ! exit then
+    2drop
+  else 2drop then ;
 
 \ style -> SGR bytes (written into fb; 0 = reset); the trailing ';' is rewritten to 'm'
 \ no locals (Gforth's locals frames crash in some call contexts; style>fb is called extremely often)
@@ -772,14 +904,42 @@ Invers                      Constant S-SEARCH   \ search match (reverse video)
   dup Underline and if 59 fb-c 52 fb-c then
   dup Blink and if     59 fb-c 53 fb-c then
   dup Invers and if    59 fb-c 55 fb-c then
-  dup BG> ?dup if  59 fb-c $F xor 40 + fb-ud.  then
-  dup FG> ?dup if  59 fb-c $F xor 30 + fb-ud.  then
+  dup bg? if  dup rgb>bg fb-bg  then
+  dup fg? if  dup rgb>fg fb-fg  then
   drop  109 fb-c ;                                 \ m
 \ same as style>fb but WITHOUT the \e[0 reset: appends/overrides onto the current SGR state
 \ (stacks a foreground/underline style on top of an existing background; no locals — same hot-path constraint)
 \ the first parameter must not be ';'-prefixed (style>fb uses the leading 0 for that)
 variable sfb-sep
 : sfb-param ( n -- )   sfb-sep @ if 59 fb-c then  1 sfb-sep !  fb-ud. ;
+
+: sfb-fg ( rgb -- )      \ emit FG via sfb-param (for style>fb+)
+  color-depth @ 24 = if
+    38 sfb-param  2 sfb-param
+    dup 16 rshift $FF and sfb-param
+    dup 8 rshift $FF and sfb-param
+    $FF and sfb-param
+  else color-depth @ 8 = if
+    38 sfb-param  5 sfb-param  rgb>256 sfb-param
+  else color-depth @ 4 = if
+    rgb>256 q16-tab + c@  dup 8 < if 30 + else 82 + then  sfb-param
+  else
+    rgb>256 q8-tab + c@ 30 + sfb-param
+  then then then ;
+
+: sfb-bg ( rgb -- )      \ emit BG via sfb-param
+  color-depth @ 24 = if
+    48 sfb-param  2 sfb-param
+    dup 16 rshift $FF and sfb-param
+    dup 8 rshift $FF and sfb-param
+    $FF and sfb-param
+  else color-depth @ 8 = if
+    48 sfb-param  5 sfb-param  rgb>256 sfb-param
+  else color-depth @ 4 = if
+    rgb>256 q16-tab + c@  dup 8 < if 40 + else 92 + then  sfb-param
+  else
+    rgb>256 q8-tab + c@ 40 + sfb-param
+  then then then ;
 : style>fb+ ( attr -- )
   27 fb-c 91 fb-c               \ \e[
   0 sfb-sep !
@@ -789,8 +949,8 @@ variable sfb-sep
   dup Underline and if 4 sfb-param  then
   dup Blink and if     5 sfb-param  then
   dup Invers and if    7 sfb-param  then
-  dup BG> ?dup if  $F xor 40 + sfb-param  then
-  dup FG> ?dup if  $F xor 30 + sfb-param  then
+  dup bg? if  dup rgb>bg sfb-bg  then
+  dup fg? if  dup rgb>fg sfb-fg  then
   drop  109 fb-c ;                                 \ m
 
 \ output this segment from in-line byte bi / absolute column dcol0, return (new bi, new absolute column); tabs expand to spaces
@@ -1663,6 +1823,8 @@ variable fe-no-config 0 fe-no-config !
   6 s" C.UTF-8" setlocale drop     \ force the UTF-8 locale so wcwidth returns 2 for CJK
   6 s" en_US.UTF-8" setlocale drop
   key? drop           \ warm-up: let Gforth's ekey save the "normal" terminal state first (otherwise it would restore raw on exit)
+  color-tables-init
+  detect-color-depth
   fe-no-config @ 0= if  load-layers-xt  then    \ load ~/.fe + ./.fe.fs (skip with -n); before raw-mode so -e can use it (and -e 'bye' exits cleanly)
   fe-eval-all           \ evaluate -e code: after config, before raw-mode
   raw-mode

@@ -2467,9 +2467,9 @@ variable match-gsz  -1 match-gsz !
 ' diag-touch is edit-touch-xt
 
 \ diagnostic styles: error = white on red, warning = bright yellow underline, info = blue underline, hint = dim gray
-variable diag-err-attr  <A Red >BG White >FG Bold A> diag-err-attr !
-variable diag-warn-attr <A Yellow >FG Bold Underline A> diag-warn-attr !
-variable diag-info-attr <A Blue >FG Underline A> diag-info-attr !
+variable diag-err-attr  <A c-red >BGrgb c-white >FGrgb Bold A> diag-err-attr !
+variable diag-warn-attr <A c-yellow >FGrgb Bold Underline A> diag-warn-attr !
+variable diag-info-attr <A c-blue >FGrgb Underline A> diag-info-attr !
 variable diag-hint-attr Dim diag-hint-attr !
 
 \ merge syntax segments + diagnostic segments: return (hlend attr)
@@ -3630,23 +3630,60 @@ variable nlnft  0 nlnft !
   -1 linenr-field !
   linenr-effective linenr-mode ! ;
 
-\ ===== themes (8 syntax colors + 4 diagnostic colors + 1 picker background)=====
-create theme-dark
-  <A Cyan >FG A> , <A Green >FG A> , <A Magenta >FG A> , <A Blue >FG Bold A> ,
-  <A Cyan >FG A> , <A Yellow >FG A> , <A Cyan >FG Bold A> , <A Magenta >FG Bold A> ,
-  <A Red >BG White >FG Bold A> , <A Yellow >FG Bold Underline A> , <A Blue >FG Underline A> , Dim ,
-  <A Blue >BG White >FG Bold A> , <A Green >FG A> , <A Magenta >BG Dim A> ,
-  <A Blue >BG Green >FG Bold A> ,
-  <A Cyan >FG Underline A> ,
+\ ===== themes (8 syntax colors + 4 diagnostics + picker/status extras)=====
+\ classic palette (24-bit, matches the original ANSI SGR 30-37 hues)
+$00cdcd constant k-cyan
+$00cd00 constant k-green
+$cd00cd constant k-magenta
+$0000cd constant k-blue
+$cdcd00 constant k-yellow
+$cd0000 constant k-red
+
+create theme-default
+  <A k-cyan >FGrgb A> , <A k-green >FGrgb A> , <A k-magenta >FGrgb A> , <A k-blue >FGrgb Bold A> ,
+  <A k-cyan >FGrgb A> , <A k-yellow >FGrgb A> , <A k-cyan >FGrgb Bold A> , <A k-magenta >FGrgb Bold A> ,
+  <A k-red >BGrgb c-brwhite >FGrgb Bold A> , <A k-yellow >FGrgb Bold Underline A> , <A k-blue >FGrgb Underline A> , Dim ,
+  <A k-blue >BGrgb c-brwhite >FGrgb Bold A> , <A k-green >FGrgb A> , <A k-magenta >BGrgb Dim A> ,
+  <A k-blue >BGrgb k-green >FGrgb Bold A> ,
+  <A k-cyan >FGrgb Underline A> ,
   Invers , Invers Dim or ,
 
-create theme-mono
-  <A Magenta >FG A> , <A Yellow >FG A> , <A Magenta >FG Bold A> , <A Magenta >FG Bold A> ,
-  <A Green >FG A> , <A Blue >FG A> , <A Cyan >FG Bold A> , <A Red >FG Bold A> ,
-  <A Red >BG White >FG Bold A> , <A Yellow >FG Bold Underline A> , <A Blue >FG Underline A> , Dim ,
-  Invers , Bold , <A Blue >BG Dim A> ,
-  Invers Bold or ,
-  <A Cyan >FG Underline A> ,
+\ monokai palette (24-bit)
+$6a9955 constant mk-comment
+$e6db74 constant mk-yellow
+$ae81ff constant mk-purple
+$f92672 constant mk-pink
+$a6e22e constant mk-green
+$66d9ef constant mk-cyan
+$fd971f constant mk-orange
+
+create theme-monokai
+  <A mk-comment >FGrgb A> , <A mk-yellow >FGrgb A> , <A mk-purple >FGrgb A> , <A mk-pink >FGrgb Bold A> ,
+  <A mk-purple >FGrgb A> , <A mk-green >FGrgb A> , <A mk-cyan >FGrgb Bold A> , <A mk-orange >FGrgb Bold A> ,
+  <A mk-pink >BGrgb c-brwhite >FGrgb Bold A> , <A mk-yellow >FGrgb Bold Underline A> , <A mk-cyan >FGrgb Underline A> , Dim ,
+  <A mk-cyan >BGrgb c-black >FGrgb Bold A> , <A mk-green >FGrgb A> , <A mk-purple >BGrgb Dim A> ,
+  <A mk-cyan >BGrgb mk-green >FGrgb Bold A> ,
+  <A mk-cyan >FGrgb Underline A> ,
+  Invers , Invers Dim or ,
+
+\ handmade-hero palette (Casey Muratori's Handmade Hero theme)
+$7d7d7d constant hh-comment    \ gray
+$6b8e23 constant hh-olive      \ olive drab (strings/constants)
+$cd950c constant hh-goldenrod  \ keyword
+$dab98f constant hh-tan        \ preproc/builtin
+$cdaa7d constant hh-burlywood  \ type/at_highlight
+$808080 constant hh-mark       \ gray (mark)
+$40ff40 constant hh-cursor     \ green cursor accent
+$404040 constant hh-selbg      \ margin_active (picker selected-row bg)
+$a00000 constant hh-red        \ error bg (comment_pop red)
+
+create theme-handmadehero
+  <A hh-comment >FGrgb A> , <A hh-olive >FGrgb A> , <A hh-olive >FGrgb A> , <A hh-goldenrod >FGrgb A> ,
+  <A hh-olive >FGrgb A> , <A hh-tan >FGrgb A> , <A hh-burlywood >FGrgb A> , <A hh-tan >FGrgb A> ,
+  <A hh-red >BGrgb hh-tan >FGrgb Bold A> , <A hh-goldenrod >FGrgb Bold Underline A> , <A hh-tan >FGrgb Underline A> , Dim ,
+  <A hh-selbg >BGrgb hh-burlywood >FGrgb Bold A> , <A hh-cursor >FGrgb A> , <A hh-mark >BGrgb Dim A> ,
+  <A hh-selbg >BGrgb hh-cursor >FGrgb Bold A> ,
+  <A hh-burlywood >FGrgb Underline A> ,
   Invers , Invers Dim or ,
 
 : theme-apply ( a -- )
@@ -3664,12 +3701,20 @@ create theme-mono
   dup 18 cells + @ status-inactive-attr !
   drop ;
 
-variable theme-cur 0 theme-cur !   \ 0=dark 1=mono
+variable theme-cur 0 theme-cur !   \ 0=default 1=monokai 2=handmadehero
 : cmd-theme
-  theme-cur @ 0= if theme-mono else theme-dark then theme-apply
-  theme-cur @ 1 xor theme-cur !
+  theme-cur @ case
+    0 of theme-monokai endof
+    1 of theme-handmadehero endof
+    2 of theme-default endof
+  endcase theme-apply
+  theme-cur @ 1+ 3 mod theme-cur !
   hlc-reset  0 pnrows !
-  theme-cur @ 0= if s" theme: dark" else s" theme: mono" then msg! ;
+  theme-cur @ case
+    0 of s" theme: default" endof
+    1 of s" theme: monokai" endof
+    2 of s" theme: handmadehero" endof
+  endcase msg! ;
 
 \ buffer switch: REPL-mode switch + completion-state reset (avoids stale candidates/cursor across buffers) + terminal-title sync
 : title-show-fname ( -- )        \ title = "fe - <current buffer name>"
@@ -4374,7 +4419,7 @@ variable em-off 0 em-off !
   mode-command mode-set ;
 
 \ takes effect on load; reload re-includes this file and runs this again to rebuild the keymap
-theme-dark theme-apply      \ apply the dark theme at startup (including the picker background)
+theme-default theme-apply      \ apply the default theme at startup (including the picker background)
 init-keymaps
 
 \ ===== layered config: layer 0 core / 1 default(custom.fs) / 2 user(~/.fe) / 3 project(./.fe.fs) =====
