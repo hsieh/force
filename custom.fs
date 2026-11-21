@@ -3701,20 +3701,32 @@ create theme-handmadehero
   dup 18 cells + @ status-inactive-attr !
   drop ;
 
-variable theme-cur 0 theme-cur !   \ 0=default 1=monokai 2=handmadehero
-: cmd-theme
-  theme-cur @ case
-    0 of theme-monokai endof
-    1 of theme-handmadehero endof
-    2 of theme-default endof
-  endcase theme-apply
-  theme-cur @ 1+ 3 mod theme-cur !
+variable theme-cur 0 theme-cur !   \ 0=default 1=monokai 2=handmadehero (-1=custom)
+
+\ theme table -> index (0..2), or -1 if custom/unknown
+: theme-idx ( a -- idx )
+  dup theme-default      = if drop 0 exit then
+  dup theme-monokai      = if drop 1 exit then
+  dup theme-handmadehero = if drop 2 exit then
+  drop -1 ;
+
+: theme-set ( a -- )      \ apply theme table + set theme-cur + reset caches + message
+  dup theme-idx dup 0>= if theme-cur ! else drop -1 theme-cur ! then
+  theme-apply
   hlc-reset  0 pnrows !
   theme-cur @ case
-    0 of s" theme: default" endof
-    1 of s" theme: monokai" endof
-    2 of s" theme: handmadehero" endof
+    -1 of s" theme: custom" endof
+     0 of s" theme: default" endof
+     1 of s" theme: monokai" endof
+     2 of s" theme: handmadehero" endof
   endcase msg! ;
+
+: cmd-theme ( -- )        \ F8: cycle default -> monokai -> handmadehero
+  theme-cur @ 1+ 3 mod case
+    0 of theme-default endof
+    1 of theme-monokai endof
+    2 of theme-handmadehero endof
+  endcase theme-set ;
 
 \ buffer switch: REPL-mode switch + completion-state reset (avoids stale candidates/cursor across buffers) + terminal-title sync
 : title-show-fname ( -- )        \ title = "fe - <current buffer name>"
