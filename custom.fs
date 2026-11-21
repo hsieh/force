@@ -1627,7 +1627,7 @@ variable lp-emit-c 0 lp-emit-c !
 \ toggle the refs search scope (path:line <-> whole item) and re-filter
 : lp-toggle-scope ( -- )
   lp-scope @ 1 xor lp-scope !
-  lp-filter  lp-update  0 pnrows !
+  lp-refresh  0 pnrows !
   lp-scope @ if s" search: all" else s" search: path" then msg! ;
 
 : mst-listpanel  s" SELECT" ;
