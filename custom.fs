@@ -3715,10 +3715,12 @@ variable theme-cur 0 theme-cur !   \ 0=default 1=monokai 2=handmadehero (-1=cust
   dup theme-handmadehero = if drop 2 exit then
   drop -1 ;
 
-: theme-set ( a -- )      \ apply theme table + set theme-cur + reset caches + message
+: theme-set ( a -- )      \ apply theme table + set theme-cur + reset caches (no message)
   dup theme-idx dup 0>= if theme-cur ! else drop -1 theme-cur ! then
   theme-apply
-  hlc-reset  0 pnrows !
+  hlc-reset  0 pnrows ! ;
+
+: theme-msg ( -- )        \ show the current theme name (for the F8 toggle)
   theme-cur @ case
     -1 of s" theme: custom" endof
      0 of s" theme: default" endof
@@ -3731,7 +3733,8 @@ variable theme-cur 0 theme-cur !   \ 0=default 1=monokai 2=handmadehero (-1=cust
     0 of theme-default endof
     1 of theme-monokai endof
     2 of theme-handmadehero endof
-  endcase theme-set ;
+  endcase theme-set
+  theme-msg ;
 
 \ buffer switch: REPL-mode switch + completion-state reset (avoids stale candidates/cursor across buffers) + terminal-title sync
 : title-show-fname ( -- )        \ title = "fe - <current buffer name>"
