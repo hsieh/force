@@ -655,8 +655,8 @@ $00ffff constant c-brcyan   $ffffff constant c-brwhite
 : fg? ( attr -- f )   8 rshift 1 and ;
 
 variable color-depth  4 color-depth !   \ terminal color depth (bits): 24 truecolor / 8 256-colors / 4 16-colors / 3 8-colors
-create q16-tab 256 allot                \ 256-color index -> 16-color index (0-15)
-create q8-tab  256 allot                \ 256-color index -> 8-color index (0-7)
+create rgb16-tab 32768 allot            \ 5-bit RGB -> 16-color index (0-15)
+create rgb8-tab  32768 allot            \ 5-bit RGB -> 8-color index (0-7)
 
 variable panel-attr  <A c-blue >BGrgb c-white >FGrgb Bold A> panel-attr !   \ selected row (fzf cursor row)
 variable match-attr  <A c-green >FGrgb A> match-attr !               \ matched-character highlight (fzf hl: green)
@@ -784,32 +784,52 @@ Dim                         Constant S-LINENR     \ line number (dim)
 Invers                      Constant S-SELECT   \ selection
 Invers                      Constant S-SEARCH   \ search match (reverse video)
 
-\ ===== 256 -> 16 -> 8 quantization + color emission helpers =====
-: q8-one ( n -- idx )      \ 256-color index -> 8-color index (0-7)
-  dup 8 < if exit then
-  dup 16 < if 8 - exit then
-  dup 232 < if
-    16 - { v }  v 36 / { r }  v 36 mod 6 / { g }  v 6 mod { b }
-    r 3 >= if 1 else 0 then { rb }  g 3 >= if 1 else 0 then { gb }  b 3 >= if 1 else 0 then { bb }
-    rb gb 2* + bb 4 * +
-  else
-    232 - 12 >= if 7 else 0 then
-  then ;
+\ ===== direct RGB -> 16/8 nearest-color tables (5-bit per channel, distance-based) =====
+\ the 16 ANSI colors as packed $RRGGBB (standard xterm values; the 8-color table uses the first 8)
+create ansi16-rgb
+  $000000 , $800000 , $008000 , $808000 ,
+  $000080 , $800080 , $008080 , $c0c0c0 ,
+  $808080 , $ff0000 , $00ff00 , $ffff00 ,
+  $0000ff , $ff00ff , $00ffff , $ffffff ,
 
-: q16-one ( n -- idx )     \ 256-color index -> 16-color index (0-15)
-  dup 16 < if exit then
-  dup 232 < if
-    16 - { v }  v 36 / { r }  v 36 mod 6 / { g }  v 6 mod { b }
-    r 3 >= if 1 else 0 then { rb }  g 3 >= if 1 else 0 then { gb }  b 3 >= if 1 else 0 then { bb }
-    rb gb 2* + bb 4 * + { base }
-    r 4 >= g 4 >= or b 4 >= or if base 8 + else base then
-  else
-    232 - { g }
-    g 18 >= if 15 else g 12 >= if 7 else g 6 >= if 8 else 0 then then then
-  then ;
+variable nb-r 0 nb-r !     variable nb-g 0 nb-g !     variable nb-b 0 nb-b !
+variable nb-c 0 nb-c !
+variable nb-best 0 nb-best !
+variable nb-idx 0 nb-idx !
+variable nb-j 0 nb-j !
+variable nb-k 0 nb-k !
+
+\ nearest index in ansi16-rgb[0..n) to (nb-r,nb-g,nb-b); n on stack
+: nb-nearest { n }
+  999999999 nb-best !  -1 nb-idx !  0 nb-j !
+  begin nb-j @ n < while
+    ansi16-rgb nb-j @ cells + @ nb-c !
+    nb-c @ 16 rshift $FF and nb-r @ - dup *
+    nb-c @ 8 rshift $FF and nb-g @ - dup * +
+    nb-c @ $FF and nb-b @ - dup * +
+    dup nb-best @ < if nb-best ! nb-j @ nb-idx ! else drop then
+    1 nb-j +!
+  repeat
+  nb-idx @ ;
+
+\ 5-bit RGB -> 15-bit index (r5*1024 + g5*32 + b5)
+: rgb>idx5 ( rgb -- idx )
+  dup 19 rshift $1F and 10 lshift
+  over 11 rshift $1F and 5 lshift
+  rot
+  3 rshift $1F and
+  or or ;
 
 : color-tables-init ( -- )
-  256 0 ?do  i q8-one  q8-tab i + c!   i q16-one  q16-tab i + c!  loop ;
+  0 nb-k !
+  begin nb-k @ 32768 < while
+    nb-k @ 10 rshift 8 * 4 + nb-r !
+    nb-k @ 5 rshift $1F and 8 * 4 + nb-g !
+    nb-k @ $1F and 8 * 4 + nb-b !
+    16 nb-nearest  rgb16-tab nb-k @ + c!
+    8  nb-nearest  rgb8-tab  nb-k @ + c!
+    1 nb-k +!
+  repeat ;
 
 \ RGB -> xterm-256 index (exact ANSI 16 -> 0..15, else cube + grayscale)
 : rgb>256 { rgb -- idx }
@@ -856,9 +876,9 @@ Invers                      Constant S-SEARCH   \ search match (reverse video)
     51 fb-c 56 fb-c 59 fb-c 53 fb-c 59 fb-c   \ 38;5;
     rgb>256 fb-ud.
   else color-depth @ 4 = if
-    rgb>256 q16-tab + c@  dup 8 < if 30 + else 82 + then  fb-ud.
+    rgb>idx5 rgb16-tab + c@  dup 8 < if 30 + else 82 + then  fb-ud.
   else
-    rgb>256 q8-tab + c@ 30 + fb-ud.
+    rgb>idx5 rgb8-tab + c@ 30 + fb-ud.
   then then then ;
 
 : fb-bg ( rgb -- )        \ emit BG (leading ';')
@@ -874,9 +894,9 @@ Invers                      Constant S-SEARCH   \ search match (reverse video)
     52 fb-c 56 fb-c 59 fb-c 53 fb-c 59 fb-c   \ 48;5;
     rgb>256 fb-ud.
   else color-depth @ 4 = if
-    rgb>256 q16-tab + c@  dup 8 < if 40 + else 92 + then  fb-ud.
+    rgb>idx5 rgb16-tab + c@  dup 8 < if 40 + else 92 + then  fb-ud.
   else
-    rgb>256 q8-tab + c@ 40 + fb-ud.
+    rgb>idx5 rgb8-tab + c@ 40 + fb-ud.
   then then then ;
 
 : detect-color-depth ( -- )
@@ -922,9 +942,9 @@ variable sfb-sep
   else color-depth @ 8 = if
     38 sfb-param  5 sfb-param  rgb>256 sfb-param
   else color-depth @ 4 = if
-    rgb>256 q16-tab + c@  dup 8 < if 30 + else 82 + then  sfb-param
+    rgb>idx5 rgb16-tab + c@  dup 8 < if 30 + else 82 + then  sfb-param
   else
-    rgb>256 q8-tab + c@ 30 + sfb-param
+    rgb>idx5 rgb8-tab + c@ 30 + sfb-param
   then then then ;
 
 : sfb-bg ( rgb -- )      \ emit BG via sfb-param
@@ -936,9 +956,9 @@ variable sfb-sep
   else color-depth @ 8 = if
     48 sfb-param  5 sfb-param  rgb>256 sfb-param
   else color-depth @ 4 = if
-    rgb>256 q16-tab + c@  dup 8 < if 40 + else 92 + then  sfb-param
+    rgb>idx5 rgb16-tab + c@  dup 8 < if 40 + else 92 + then  sfb-param
   else
-    rgb>256 q8-tab + c@ 40 + sfb-param
+    rgb>idx5 rgb8-tab + c@ 40 + sfb-param
   then then then ;
 : style>fb+ ( attr -- )
   27 fb-c 91 fb-c               \ \e[
