@@ -3103,8 +3103,7 @@ $10000000 constant cm-shift
 
 \ vim :set paste! / pastetoggle equivalent: toggle paste mode (no auto-indent / tab completion while pasting)
 : cmd-paste-toggle
-  paste-mode @ 0= paste-mode !
-  paste-mode @ if s" paste on" else s" paste off" then msg! ;
+  paste-mode @ 0= paste-mode ! ;   \ statusline mode (mst-ins) shows INSERT / INSERT (paste) automatically
 
 \ --- commands ---
 : cmd-visual                 \ v: toggle charwise visual; in linewise visual switch to charwise (keep anchor)
