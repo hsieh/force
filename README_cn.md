@@ -115,6 +115,7 @@ ln -s "$PWD/fe" ~/bin/fe
 0 linenr-default !                     \ 默认关闭行号（0=off 1=绝对 2=相对 3=hybrid）
 1 regex-search !                       \ 搜索用 POSIX 正则（默认 0=字面子串）
 1 lp-keep-right !                      \ 筛选面板超宽项改为保留右端（默认保留头部+尾部 …）
+0 visual-inclusive !                   \ charwise 视觉选区改为半开 [lo,hi)（默认 1=vim/neovim 式，含光标下字符）
 char Z ' cmd-qrep bind-command         \ 把「查询替换」改绑到 Z（配置是解释执行：用 char/' 而非 [char]/[']）
 ```
 
@@ -130,6 +131,7 @@ char Z ' cmd-qrep bind-command         \ 把「查询替换」改绑到 Z（配�
 | `regex-search` | 0 | 1=搜索用 POSIX 正则；0=字面子串 |
 | `lp-keep-right` | 0 | 1=筛选面板超宽项保留右端 |
 | `lp-scope-default` | 0 | refs 面板搜索范围：0=只搜路径:行号，1=搜整个条目（面板内 Ctrl-x 可临时切换）|
+| `visual-inclusive` | 1 | charwise 视觉选区右边界：1=包含光标下字符（vim/neovim 同款）；0=半开 `[lo,hi)` 不含光标侧字符 |
 
 按键重绑用 `bind-command`（命令模式）、`bind-insert`（插入模式）、`bind-mode`（任意模式）。
 单层配置出错会隔离（状态栏提示错误，不拖垮其它层）。

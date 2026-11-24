@@ -119,6 +119,7 @@ At startup (and on `F5` reload), configuration layers are loaded by priority: **
 0 linenr-default !                     \ turn off line numbers by default (0=off 1=absolute 2=relative 3=hybrid)
 1 regex-search !                       \ use POSIX regex for search (default 0 = literal substring)
 1 lp-keep-right !                      \ pickers keep the right end of over-wide entries (default keeps head + tail …)
+0 visual-inclusive !                   \ charwise visual selection as half-open [lo,hi) (default 1 = vim/neovim style, cursor char included)
 char Z ' cmd-qrep bind-command         \ rebind query-replace to Z (config is interpreted: use char/' instead of [char]/['])
 ```
 
@@ -134,6 +135,7 @@ Commonly configurable variables:
 | `regex-search` | 0 | 1=search uses POSIX regex; 0=literal substring |
 | `lp-keep-right` | 0 | 1=pickers keep the right end of over-wide entries |
 | `lp-scope-default` | 0 | refs picker search scope: 0=path:line only, 1=whole item (Ctrl-x toggles it live) |
+| `visual-inclusive` | 1 | charwise visual selection end: 1=include the cursor char (vim/neovim style); 0=half-open `[lo,hi)` |
 
 Key rebinding uses `bind-command` (command mode), `bind-insert` (insert mode), `bind-mode` (any mode).
 A configuration error in one layer is isolated (reported on the status line; it doesn't break the other layers).

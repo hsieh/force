@@ -2291,19 +2291,26 @@ create yank-buf 65536 allot
 variable yank-len   0 yank-len !
 variable yank-linewise 0 yank-linewise !   \ 1 = the register holds whole lines (yy/dd/V); paste treats it linewise
 variable vis-linewise 0 vis-linewise !   \ 0=charwise (v) 1=linewise (V)
+\ charwise visual selection end: 1 = vim/neovim style, the character under the cursor is
+\ part of the selection (inclusive); 0 = half-open [lo,hi) with the cursor-side end excluded.
+variable visual-inclusive 1 visual-inclusive !
 
-\ visual selection bounds: charwise = byte range [min,max); linewise = whole lines
-\ [line-start(min-line), line-start(max-line+1)); cached per (cursor,anchor,linewise)
-\ so the hot hl-attr render path does not redo offset-line per character.
+\ visual selection bounds: charwise = byte range [min, max+char-width) when visual-inclusive,
+\ or [min,max) when not; linewise = whole lines [line-start(min-line), line-start(max-line+1)).
+\ Cached per (cursor,anchor,linewise,inclusive) so the hot hl-attr render path does not
+\ redo offset-line per character.
 variable vis-lo-v  0 vis-lo-v !
 variable vis-hi-v  0 vis-hi-v !
 variable vis-ck-cur    -1 vis-ck-cur !
 variable vis-ck-anchor -1 vis-ck-anchor !
 variable vis-ck-lw     -1 vis-ck-lw !
+variable vis-ck-inc    -1 vis-ck-inc !
 : vis-bounds ( -- lo hi )
   vis-ck-cur @ cursor @ =  vis-ck-anchor @ vis-anchor @ =  and
-  vis-ck-lw @ vis-linewise @ =  and  0= if
-    cursor @ vis-ck-cur !  vis-anchor @ vis-ck-anchor !  vis-linewise @ vis-ck-lw !
+  vis-ck-lw @ vis-linewise @ =  and
+  vis-ck-inc @ visual-inclusive @ =  and  0= if
+    cursor @ vis-ck-cur !  vis-anchor @ vis-ck-anchor !
+    vis-linewise @ vis-ck-lw !  visual-inclusive @ vis-ck-inc !
     vis-linewise @ if
       cursor @ offset-line  vis-anchor @ offset-line  min
       cursor @ offset-line  vis-anchor @ offset-line  max
@@ -2312,6 +2319,11 @@ variable vis-ck-lw     -1 vis-ck-lw !
     else
       cursor @ vis-anchor @ min  vis-lo-v !
       cursor @ vis-anchor @ max  vis-hi-v !
+      visual-inclusive @ if
+        vis-hi-v @ g-size < if
+          vis-hi-v @ u8-n vis-hi-v +!       \ include the whole character under the cursor end
+        then
+      then
     then
   then
   vis-lo-v @ vis-hi-v @ ;

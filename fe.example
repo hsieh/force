@@ -5,6 +5,7 @@
 \ --- basics ---
 4 tab-width !                 \ tab display width
 0 linenr-default !            \ line numbers off by default (0=off 1=absolute 2=relative 3=hybrid)
+1 visual-inclusive !          \ charwise visual selection includes the cursor char (vim/neovim style; 0 = half-open [lo,hi))
 1 backup !                    \ keep the previous version as <name>~ on save
 K-F11 ' reload-extension bind-base   \ F11 also reloads custom.fs (F5 is the default)
 
