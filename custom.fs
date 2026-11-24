@@ -2534,9 +2534,18 @@ variable dg-a  0 dg-a !
   dm-e @ dm-at @ ;
 
 : hl-attr { a -- hlend attr }
+  \ cursor character byte bounds (visual-mode cursor-cell exclusion: the
+  \ terminal block cursor reverses its own cell, so rendering the character
+  \ under the cursor with the selection reverse-video would cancel out and
+  \ show it in unselected colors — vim renders the cursor char normal too)
+  cursor @ { ccs }   ccs g-size < if  ccs u8-n else 0 then { ccw }   ccs ccw + { cce }
   win-render-active @ if
     visual @ 0<> if
-      a vis-lo >= a vis-hi < and if  vis-hi S-SELECT exit  then
+      a vis-lo >= a vis-hi < and if
+        a ccs < if  ccs vis-hi min  S-SELECT exit  then
+        a cce >= if  vis-hi S-SELECT exit  then
+        \ a is the character under the cursor: fall through to render it normally
+      then
     then
   then
   a search-hl  dup 0<> if  exit  then  2drop   \ search-hl returns 2 values; drop 2 on a miss (otherwise it leaks 1 cell each time → stack overflow)
@@ -2547,6 +2556,7 @@ variable dg-a  0 dg-a !
     visual @ 0<> if                                \ do not cross the selection boundary
       a vis-lo <  vis-lo e <  and if  vis-lo to e  then
       a vis-hi <  vis-hi e <  and if  vis-hi to e  then
+      a cce <  cce e <  and if  cce to e  then      \ the cursor char's style must not extend past it
     then
   then
   patlen @ 0> if  a e next-match to e  then      \ do not cross the next search match
