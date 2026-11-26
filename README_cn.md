@@ -33,6 +33,8 @@
 
 你可以从头到尾读完整个编辑器，并且就在它运行时改它。
 
+> **注：**这里的「handmade 风格」指的是上述代码/设计理念（本项目对 AI 协助的立场见[项目历史](#项目历史)），**并非** handmade.network 社区的 AI policy。
+
 - 依赖 **Gforth 1.0**（0.7.9 也可能可用） + 一个 C 编译器（仅首次运行编译 termios/宽度绑定时需要，之后走缓存）。
 - live grep 需要 `rg` 或 `git` 或 `grep` 之一（`rg` 优先，没有则回退 `git grep` → `grep`）。
 - 仅支持 macOS / Linux，ANSI / xterm 类终端。

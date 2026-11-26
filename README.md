@@ -33,6 +33,8 @@ The code is written in the handmade style, in the small:
 
 You can read the whole editor end to end — and change it while it runs.
 
+> **Note:** "handmade style" here means the code/design approach above (for this project's stance on AI assistance, see [Project history](#project-history)). It is **not** the handmade.network community's AI policy.
+
 - Depends on **Gforth 1.0** (0.7.9 may also work) plus a C compiler (only needed on first run to compile the termios/width bindings; afterwards the result is cached).
 - live grep needs one of `rg`, `git`, or `grep` (`rg` is preferred; if absent it falls back to `git grep` → `grep`).
 - macOS / Linux only, ANSI / xterm terminals.
